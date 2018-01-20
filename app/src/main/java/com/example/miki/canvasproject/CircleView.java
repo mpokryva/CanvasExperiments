@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
+import android.graphics.PointF;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -26,13 +27,15 @@ public class CircleView extends View {
     private float mTextHeight;
     private Paint mPiePaint;
     private Paint mShadowPaint;
-    private float mScaleFactor;
+    private float mScaleFactor = 1;
     private ScaleGestureDetector mScaleDetector;
     private int numCircles;
     private final int NUM_CIRCLES = 5;
     private Random rand;
     private ArrayList<Circle> circles;
     private final int CENTER_RADIUS = 150;
+    private PointF prevCenter;
+    private PointF center;
 
 
     public CircleView(Context context) {
@@ -125,6 +128,12 @@ public class CircleView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         canvas.save();
+//        if (center != null && prevCenter != null) {
+//
+//            float diffX = (center.x - prevCenter.x);
+//            float diffY = (center.y - prevCenter.y);
+//            canvas.translate(diffX, diffY);
+//        }
         canvas.scale(mScaleFactor, mScaleFactor);
         circles.get(0).setX(getWidth()/2);
         circles.get(0).setY(getHeight()/2);
@@ -145,7 +154,19 @@ public class CircleView extends View {
 
             // Don't let the object get too small or too large.
             mScaleFactor = Math.max(0.1f, Math.min(mScaleFactor, 5.0f));
-
+//            float x = detector.getFocusX();
+//            float y = detector.getFocusY();
+//            if (center != null) {
+//                float diffX = (center.x - x);
+//                diffX = diffX * mScaleFactor - diffX;
+//                float diffY = (center.y - y);
+//                diffY = diffY * mScaleFactor - diffY;
+//                prevCenter = center;
+//                center = new PointF(center.x - diffX, center.y - diffY);
+//            } else {
+//                center = new PointF(x, y);
+//                prevCenter = null;
+//            }
             invalidate();
             return true;
         }
