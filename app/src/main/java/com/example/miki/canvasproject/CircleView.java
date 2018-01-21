@@ -5,11 +5,6 @@ import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Point;
-import android.graphics.PointF;
-import android.graphics.Rect;
-import android.graphics.RectF;
-import android.support.v4.view.ViewCompat;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -17,10 +12,8 @@ import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Random;
-import java.util.zip.CRC32;
 
 import static android.content.ContentValues.TAG;
 
@@ -37,21 +30,11 @@ public class CircleView extends View {
     private float mScaleFactor = 1;
     private ScaleGestureDetector mScaleDetector;
     private int numCircles;
-    private final int NUM_CIRCLES = 5;
+    private final int NUM_CIRCLES = 20;
     private Random rand;
     private ArrayList<Circle> circles;
     private final int CENTER_RADIUS = 150;
-    private float AXIS_X_MIN = 0;
-    private float AXIS_X_MAX;
-    private float AXIS_Y_MIN = 0;
-    private float AXIS_Y_MAX;
-    private RectF mCurrentViewport =
-            new RectF(AXIS_X_MIN, AXIS_Y_MIN, AXIS_X_MAX, AXIS_Y_MAX);
-    private GestureDetector mGestureDecetor;
-
-    // The current destination rectangle (in pixel coordinates) into which the
-// chart data should be drawn.
-    private Rect mContentRect;
+    private GestureDetector mGestureDetector;
     private float xTranslate;
     private float yTranslate;
 
@@ -63,16 +46,13 @@ public class CircleView extends View {
         super(context);
         init();
         mScaleDetector = new ScaleGestureDetector(getContext(), new ScaleListener());
-        mGestureDecetor = new GestureDetector(getContext(), new GestureListener());
+        mGestureDetector = new GestureDetector(getContext(), new GestureListener());
         rand = new Random();
         circles = new ArrayList<>();
         DisplayMetrics displayMetrics = new DisplayMetrics();
         ((MainActivity)getContext()).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
         int height = displayMetrics.heightPixels;
         int width = displayMetrics.widthPixels;
-        AXIS_X_MAX = width;
-        AXIS_Y_MAX = height;
-        mContentRect = new Rect((int)AXIS_X_MIN, (int)AXIS_Y_MAX, (int)AXIS_X_MAX, (int)AXIS_Y_MIN);
         circles.add(new Circle(width/2, height/2, 150, true));
         for (int i = 0; i < NUM_CIRCLES; i++) {
             float x = 1;
@@ -90,7 +70,7 @@ public class CircleView extends View {
     public boolean onTouchEvent(MotionEvent ev) {
         // Let the ScaleGestureDetector inspect all events.
         mScaleDetector.onTouchEvent(ev);
-        mGestureDecetor.onTouchEvent(ev);
+        mGestureDetector.onTouchEvent(ev);
         return true;
     }
 
@@ -145,7 +125,9 @@ public class CircleView extends View {
 //            canvas.translate(diffX, diffY);
 //        }
         canvas.scale(mScaleFactor, mScaleFactor);
-        canvas.translate(xTranslate, yTranslate);
+        if (!mScaleDetector.isInProgress()) {
+            canvas.translate(xTranslate, yTranslate);
+        }
         circles.get(0).setX(getWidth()/2);
         circles.get(0).setY(getHeight()/2);
         recompute();
@@ -162,7 +144,6 @@ public class CircleView extends View {
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
             mScaleFactor *= detector.getScaleFactor();
-
             // Don't let the object get too small or too large.
             mScaleFactor = Math.max(0.1f, Math.min(mScaleFactor, 5.0f));
 //            float x = detector.getFocusX();
@@ -189,6 +170,7 @@ public class CircleView extends View {
             Log.d(TAG, "Scrolling!");
                 xTranslate = e2.getX() - e1.getX() ;
                 yTranslate = e2.getY() - e1.getY();
+                Log.d(TAG, "" + xTranslate);
                 invalidate();
 //            float viewportOffsetX = distanceX * mCurrentViewport.width()
 //                    / mContentRect.width();
@@ -200,64 +182,5 @@ public class CircleView extends View {
 //                    mCurrentViewport.bottom + viewportOffsetY);
             return true;
         }
-
-        private void setViewportBottomLeft(float x, float y) {
-    /*
-     * Constrains within the scroll range. The scroll range is simply the viewport
-     * extremes (AXIS_X_MAX, etc.) minus the viewport size. For example, if the
-     * extremes were 0 and 10, and the viewport size was 2, the scroll range would
-     * be 0 to 8.
-     */
-
-            float curWidth = mCurrentViewport.width();
-            float curHeight = mCurrentViewport.height();
-            x = Math.max(AXIS_X_MIN, Math.min(x, AXIS_X_MAX - curWidth));
-            y = Math.max(AXIS_Y_MIN + curHeight, Math.min(y, AXIS_Y_MAX));
-
-            mCurrentViewport.set(x, y - curHeight, x + curWidth, y);
-
-            // Invalidates the View to update the display.
-            ViewCompat.postInvalidateOnAnimation(CircleView.this);
-        }
     }
-
-    private final GestureDetector.SimpleOnGestureListener mGestureListener = new GestureDetector.SimpleOnGestureListener() {
-        @Override
-        public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-            Log.d(TAG, "Scrolled!");
-            // Scrolling uses math based on the viewport (as opposed to math using pixels).
-
-            // Pixel offset is the offset in screen pixels, while viewport offset is the
-            // offset within the current viewport.
-            float viewportOffsetX = distanceX * AXIS_X_MAX;
-            float viewportOffsetY = -distanceY * AXIS_Y_MAX;
-            // Updates the viewport, refreshes the display.
-            setViewportBottomLeft(
-                    mCurrentViewport.left + viewportOffsetX,
-                    mCurrentViewport.bottom + viewportOffsetY);
-            return true;
-        }
-
-        private void setViewportBottomLeft(float x, float y) {
-    /*
-     * Constrains within the scroll range. The scroll range is simply the viewport
-     * extremes (AXIS_X_MAX, etc.) minus the viewport size. For example, if the
-     * extremes were 0 and 10, and the viewport size was 2, the scroll range would
-     * be 0 to 8.
-     */
-
-            float curWidth = mCurrentViewport.width();
-            float curHeight = mCurrentViewport.height();
-            x = Math.max(AXIS_X_MIN, Math.min(x, AXIS_X_MAX - curWidth));
-            y = Math.max(AXIS_Y_MIN + curHeight, Math.min(y, AXIS_Y_MAX));
-
-            mCurrentViewport.set(x, y - curHeight, x + curWidth, y);
-
-            // Invalidates the View to update the display.
-            ViewCompat.postInvalidateOnAnimation(CircleView.this);
-        }
-    };
-
-
-
 }
