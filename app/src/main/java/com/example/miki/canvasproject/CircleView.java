@@ -125,9 +125,7 @@ public class CircleView extends View {
 //            canvas.translate(diffX, diffY);
 //        }
         canvas.scale(mScaleFactor, mScaleFactor);
-        if (!mScaleDetector.isInProgress()) {
-            canvas.translate(xTranslate, yTranslate);
-        }
+        canvas.translate(xTranslate, yTranslate);
         circles.get(0).setX(getWidth()/2);
         circles.get(0).setY(getHeight()/2);
         recompute();
